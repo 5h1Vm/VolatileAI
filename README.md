@@ -31,7 +31,7 @@ Open **http://localhost:8502** in your browser.
 
 ## Demo Scenarios
 
-Five pre-built attack scenarios with realistic synthetic Volatility output and 118+ cached AI responses:
+Five pre-built attack scenarios with realistic synthetic Volatility output for testing:
 
 | Scenario | Description |
 |----------|-------------|
@@ -75,10 +75,6 @@ volatile_ai/
 
 ## AI Analysis
 
-### Cached Mode (Default)
-118+ pre-built expert responses for all demo scenarios. Works offline — perfect for presentations.
-
-### Live AI Mode
 Install Ollama and pull the Phi-3 Mini model:
 
 ```bash
