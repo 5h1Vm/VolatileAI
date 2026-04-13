@@ -1,0 +1,174 @@
+/* VolatileAI — Professional Dark Forensics Theme */
+
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+.main .block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+    max-width: 1300px;
+}
+
+/* Metric cards with glass morphism */
+div[data-testid="stMetric"] {
+    background: linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(30,41,59,0.9) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 16px;
+    padding: 1.1rem 1.3rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(56,189,248,0.1), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+div[data-testid="stMetric"] label {
+    color: #94a3b8 !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #f1f5f9 !important;
+    font-size: 1.8rem !important;
+    font-weight: 800 !important;
+}
+
+/* Sidebar — deep dark with accent border */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e293b 100%);
+    border-right: 1px solid rgba(56,189,248,0.1);
+}
+
+section[data-testid="stSidebar"] .stRadio label {
+    color: #cbd5e1 !important;
+    font-weight: 500;
+    padding: 0.4rem 0;
+}
+
+/* Tabs — sleek underline style */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0;
+    background: transparent;
+    border-bottom: 2px solid #1e293b;
+}
+
+.stTabs [data-baseweb="tab"] {
+    color: #64748b;
+    padding: 10px 20px;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.stTabs [aria-selected="true"] {
+    color: #38bdf8 !important;
+    border-bottom: 2px solid #38bdf8 !important;
+    background: transparent !important;
+}
+
+/* Buttons — modern with glow */
+.stButton > button {
+    border-radius: 10px;
+    font-weight: 700;
+    padding: 0.6rem 1.6rem;
+    transition: all 0.25s ease;
+    border: 1px solid rgba(56,189,248,0.3);
+    letter-spacing: 0.02em;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(56,189,248,0.2);
+    border-color: #38bdf8;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+    border: none;
+    color: white;
+}
+
+.stButton > button[kind="primary"]:hover {
+    box-shadow: 0 6px 25px rgba(56,189,248,0.35);
+}
+
+/* Expander — clean with accent */
+.streamlit-expanderHeader {
+    font-weight: 600 !important;
+    color: #e2e8f0 !important;
+    background: rgba(15,23,42,0.6);
+    border-radius: 10px;
+    border: 1px solid #1e293b;
+}
+
+/* Chat input styling */
+.stChatInput textarea {
+    border-radius: 12px !important;
+    border: 1px solid #334155 !important;
+    background: #0f172a !important;
+}
+
+/* Chat messages */
+.stChatMessage {
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+}
+
+/* Dataframe */
+.stDataFrame {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+}
+
+/* Text input */
+.stTextInput input {
+    border-radius: 10px !important;
+    border: 1px solid #334155 !important;
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+    padding: 0.7rem 1rem !important;
+    font-size: 0.95rem !important;
+}
+
+.stTextInput input:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56,189,248,0.15) !important;
+}
+
+/* Select box */
+.stSelectbox > div > div {
+    border-radius: 10px !important;
+    border-color: #334155 !important;
+}
+
+/* Progress bar */
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc) !important;
+    border-radius: 4px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #020617; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Custom animation for findings */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Divider override */
+hr {
+    border-color: #1e293b !important;
+    opacity: 0.5;
+}

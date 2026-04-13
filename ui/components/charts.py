@@ -1,0 +1,247 @@
+"""Plotly chart components for VolatileAI."""
+
+import plotly.graph_objects as go
+import plotly.express as px
+from typing import Dict, List, Tuple, Any
+
+COLORS = {
+    "primary": "#38bdf8", "secondary": "#818cf8", "success": "#22c55e",
+    "warning": "#eab308", "danger": "#ef4444", "orange": "#f97316",
+    "cyan": "#06b6d4", "pink": "#ec4899", "bg_dark": "#020617",
+    "bg_card": "#0f172a", "border": "#1e293b", "text": "#e2e8f0",
+    "text_muted": "#94a3b8",
+}
+
+DARK_LAYOUT = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(color=COLORS["text"], family="Inter, system-ui, sans-serif"),
+    margin=dict(l=40, r=40, t=50, b=40),
+)
+
+RISK_COLORS = {"critical": "#ef4444", "high": "#f97316", "medium": "#eab308", "low": "#22c55e"}
+
+
+def create_risk_donut(summary: Dict[str, int]) -> go.Figure:
+    labels = list(summary.keys())
+    values = list(summary.values())
+    colors = [RISK_COLORS.get(l, "#94a3b8") for l in labels]
+
+    fig = go.Figure(go.Pie(
+        labels=[l.capitalize() for l in labels], values=values, hole=0.65,
+        marker=dict(colors=colors, line=dict(color="#0f172a", width=2)),
+        textinfo="label+value", textfont=dict(size=12, color="white"),
+        hovertemplate="<b>%{label}</b>: %{value} findings<extra></extra>",
+    ))
+    fig.add_annotation(text=f"<b>{sum(values)}</b><br>Total", font=dict(size=20, color="#e2e8f0"), showarrow=False)
+    layout = {**DARK_LAYOUT, "margin": dict(l=20, r=20, t=30, b=20)}
+    fig.update_layout(**layout, showlegend=True, height=320,
+        legend=dict(orientation="h", y=-0.1, x=0.5, xanchor="center", font=dict(size=11, color="#94a3b8")))
+    return fig
+
+
+def create_category_bar(findings_by_cat: Dict[str, int]) -> go.Figure:
+    cats = list(findings_by_cat.keys())
+    counts = list(findings_by_cat.values())
+    cat_colors = {"process": "#38bdf8", "network": "#818cf8", "injection": "#ef4444",
+                  "dll": "#f97316", "persistence": "#ec4899", "credential": "#eab308"}
+    colors = [cat_colors.get(c, "#94a3b8") for c in cats]
+
+    fig = go.Figure(go.Bar(
+        x=[c.capitalize() for c in cats], y=counts, marker_color=colors,
+        text=counts, textposition="auto", textfont=dict(size=13, color="white"),
+    ))
+    fig.update_layout(**DARK_LAYOUT, height=320, title=dict(text="Findings by Category", font=dict(size=15)),
+        xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b", title="Count"))
+    return fig
+
+
+def create_process_tree(processes: List[Dict]) -> go.Figure:
+    """Create a visual process tree using treemap."""
+    if not processes:
+        return go.Figure()
+
+    ids, labels, parents, colors, hover_texts = [], [], [], [], []
+    pid_map = {}
+
+    for p in processes:
+        pid = p.get("PID") or p.get("pid")
+        name = p.get("ImageFileName") or p.get("Name") or p.get("name") or "?"
+        ppid = p.get("PPID") or p.get("ppid")
+        pid_map[pid] = {"name": name, "ppid": ppid, "raw": p}
+
+    root_id = "root"
+    ids.append(root_id)
+    labels.append("System")
+    parents.append("")
+    colors.append("#1e293b")
+    hover_texts.append("Root")
+
+    for pid, info in pid_map.items():
+        node_id = f"pid_{pid}"
+        ids.append(node_id)
+        labels.append(f"{info['name']}<br>PID:{pid}")
+
+        ppid_node = f"pid_{info['ppid']}" if info['ppid'] in pid_map else root_id
+        parents.append(ppid_node)
+
+        risk = info["raw"].get("_risk_score", 0)
+        if risk >= 8:
+            colors.append("#ef4444")
+        elif risk >= 6:
+            colors.append("#f97316")
+        elif risk >= 4:
+            colors.append("#eab308")
+        else:
+            colors.append("#334155")
+
+        hover_texts.append(f"PID: {pid} | PPID: {info['ppid']} | {info['name']}")
+
+    fig = go.Figure(go.Treemap(
+        ids=ids, labels=labels, parents=parents,
+        marker=dict(colors=colors, line=dict(color="#020617", width=2)),
+        textfont=dict(size=11, color="white"),
+        hovertext=hover_texts, hoverinfo="text",
+    ))
+    layout = {**DARK_LAYOUT, "margin": dict(l=5, r=5, t=40, b=5)}
+    fig.update_layout(**layout, height=500, title=dict(text="Process Tree", font=dict(size=15)))
+    return fig
+
+
+def create_network_graph(connections: List[Dict]) -> go.Figure:
+    """Create a network connection visualization."""
+    if not connections:
+        return go.Figure()
+
+    local_ips = set()
+    remote_ips = set()
+    edges = []
+
+    for conn in connections:
+        local = str(conn.get("LocalAddr") or conn.get("local_addr") or "")
+        remote = str(conn.get("ForeignAddr") or conn.get("foreign_addr") or "")
+        pid = conn.get("PID") or conn.get("pid") or ""
+        port = conn.get("ForeignPort") or conn.get("foreign_port") or ""
+
+        if remote and remote not in ("0.0.0.0", "::", "*", "-", "127.0.0.1"):
+            local_ips.add(local)
+            remote_ips.add(remote)
+            edges.append((local, remote, pid, port))
+
+    import networkx as nx
+    G = nx.Graph()
+    for lip in local_ips:
+        G.add_node(lip, node_type="local")
+    for rip in remote_ips:
+        G.add_node(rip, node_type="remote")
+    for l, r, pid, port in edges:
+        G.add_edge(l, r, pid=pid, port=port)
+
+    pos = nx.spring_layout(G, seed=42, k=2)
+
+    edge_x, edge_y = [], []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+
+    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(node)
+        if G.nodes[node].get("node_type") == "local":
+            node_color.append("#38bdf8")
+            node_size.append(20)
+        else:
+            node_color.append("#ef4444")
+            node_size.append(15)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=edge_x, y=edge_y, mode="lines",
+        line=dict(width=1, color="rgba(148,163,184,0.3)"), hoverinfo="none"))
+    fig.add_trace(go.Scatter(x=node_x, y=node_y, mode="markers+text",
+        marker=dict(size=node_size, color=node_color, line=dict(width=1, color="#0f172a")),
+        text=node_text, textposition="top center", textfont=dict(size=9, color="#94a3b8"),
+        hovertemplate="<b>%{text}</b><extra></extra>"))
+
+    layout = {**DARK_LAYOUT, "margin": dict(l=10, r=10, t=40, b=10)}
+    fig.update_layout(**layout, height=450, showlegend=False,
+        title=dict(text="Network Connections", font=dict(size=15)),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+    return fig
+
+
+def create_timeline(events: List[Dict]) -> go.Figure:
+    """Create an interactive forensic timeline."""
+    if not events:
+        return go.Figure()
+
+    cat_colors = {"process": "#38bdf8", "network": "#818cf8", "injection": "#ef4444",
+                  "dll": "#f97316", "persistence": "#ec4899", "service": "#06b6d4"}
+
+    fig = go.Figure()
+    for i, evt in enumerate(events):
+        color = cat_colors.get(evt.get("category", ""), "#94a3b8")
+        risk = evt.get("risk_score", 0)
+        size = 8 + risk * 2
+
+        fig.add_trace(go.Scatter(
+            x=[evt.get("timestamp", "")], y=[evt.get("category", "").capitalize()],
+            mode="markers+text",
+            marker=dict(size=size, color=color, symbol="circle",
+                        line=dict(width=1, color="#0f172a")),
+            text=[evt.get("title", "")[:30]], textposition="top center",
+            textfont=dict(size=8, color="#94a3b8"),
+            hovertemplate=f"<b>{evt.get('title','')}</b><br>Time: {evt.get('timestamp','')}<br>Risk: {risk:.1f}<extra></extra>",
+            showlegend=False,
+        ))
+
+    fig.update_layout(**DARK_LAYOUT, height=350,
+        title=dict(text="Attack Timeline", font=dict(size=15)),
+        xaxis=dict(title="Time", gridcolor="#1e293b"),
+        yaxis=dict(gridcolor="#1e293b"))
+    return fig
+
+
+def create_mitre_heatmap(tactic_data: Dict[str, List]) -> go.Figure:
+    """Create MITRE ATT&CK tactic heatmap."""
+    tactics = []
+    techniques = []
+    severities = []
+
+    for tactic, tech_list in tactic_data.items():
+        if tech_list:
+            for t in tech_list:
+                tactics.append(tactic)
+                techniques.append(t["technique_name"][:25])
+                severities.append(t["max_severity"])
+
+    if not tactics:
+        fig = go.Figure()
+        fig.add_annotation(text="No MITRE techniques detected", font=dict(size=16, color="#94a3b8"), showarrow=False)
+        fig.update_layout(**DARK_LAYOUT, height=400)
+        return fig
+
+    fig = go.Figure(go.Scatter(
+        x=tactics, y=techniques, mode="markers",
+        marker=dict(
+            size=[s * 5 for s in severities],
+            color=severities,
+            colorscale=[[0, "#22c55e"], [0.4, "#eab308"], [0.7, "#f97316"], [1, "#ef4444"]],
+            showscale=True,
+            colorbar=dict(title=dict(text="Severity", font=dict(color="#94a3b8")),
+                          tickfont=dict(color="#64748b")),
+            line=dict(width=1, color="#0f172a"),
+        ),
+        hovertemplate="<b>%{y}</b><br>Tactic: %{x}<br>Severity: %{marker.color:.1f}<extra></extra>",
+    ))
+
+    fig.update_layout(**DARK_LAYOUT, height=max(400, len(techniques) * 35),
+        title=dict(text="MITRE ATT&CK Detection Map", font=dict(size=15)),
+        xaxis=dict(tickangle=-45, gridcolor="#1e293b"),
+        yaxis=dict(gridcolor="#1e293b"))
+    return fig

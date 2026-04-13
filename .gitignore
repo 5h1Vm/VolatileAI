@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+reports/output/
+evidence/*.raw
+evidence/*.vmem
+evidence/*.dmp
+evidence/*.mem
+evidence/*.lime
