@@ -53,7 +53,7 @@ def render_dashboard():
             unsafe_allow_html=True,
         )
         fig_donut = create_risk_donut(risk_summary)
-        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_donut, width="stretch", config={"displayModeBar": False})
 
     with chart_right:
         st.markdown(
@@ -64,7 +64,7 @@ def render_dashboard():
         findings_by_cat = st.session_state.detector.get_findings_by_category()
         category_counts = {cat: len(items) for cat, items in findings_by_cat.items()}
         fig_bar = create_category_bar(category_counts)
-        st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_bar, width="stretch", config={"displayModeBar": False})
 
     st.markdown("<div style='height:0.8rem'></div>", unsafe_allow_html=True)
 

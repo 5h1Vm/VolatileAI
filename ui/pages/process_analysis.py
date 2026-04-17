@@ -73,7 +73,7 @@ def render_process_analysis():
             p["_risk_score"] = risk_scores.get(f"PID:{pid}", 0)
 
         fig = create_process_tree(processes)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         st.markdown("""
         <div style='display:flex;gap:18px;justify-content:center;padding:0.4rem 0 0.6rem 0;flex-wrap:wrap'>
@@ -115,7 +115,7 @@ def render_process_analysis():
                 return [""] * len(row)
 
             styled_df = df.style.apply(_highlight_suspicious, axis=1)
-            st.dataframe(styled_df, use_container_width=True, height=min(400, 40 + len(df) * 35))
+            st.dataframe(styled_df, width="stretch", height=min(400, 40 + len(df) * 35))
 
         st.markdown("---")
         st.markdown("<h4 style='color:#f1f5f9;font-weight:700'>🚨 Suspicious Processes</h4>", unsafe_allow_html=True)

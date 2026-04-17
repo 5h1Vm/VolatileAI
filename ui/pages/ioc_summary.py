@@ -88,7 +88,7 @@ def render_ioc_summary():
                 return f"color: {c}; font-weight: 700"
 
             styled = df.style.applymap(_color_risk, subset=["Risk Level"])
-            st.dataframe(styled, use_container_width=True, hide_index=True)
+            st.dataframe(styled, width="stretch", hide_index=True)
         else:
             info_banner("No suspicious external IP addresses detected.", type_="success")
 
@@ -107,7 +107,7 @@ def render_ioc_summary():
                 return f"color: {c}; font-weight: 700"
 
             styled = df.style.applymap(_color_risk, subset=["Risk Level"])
-            st.dataframe(styled, use_container_width=True, hide_index=True)
+            st.dataframe(styled, width="stretch", hide_index=True)
         else:
             info_banner("No suspicious processes detected.", type_="success")
 

@@ -42,7 +42,7 @@ def render_ai_chat():
     st.markdown("#### Quick Analysis")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("📋 Auto Summary", use_container_width=True):
+        if st.button("📋 Auto Summary", width="stretch"):
             response = ai_engine.get_auto_analysis(scenario_id)
             st.session_state.chat_history.append({
                 "role": "user",
@@ -51,7 +51,7 @@ def render_ai_chat():
             st.session_state.chat_history.append({"role": "assistant", "content": response})
             st.rerun()
     with col2:
-        if st.button("📖 Attack Narrative", use_container_width=True):
+        if st.button("📖 Attack Narrative", width="stretch"):
             response = ai_engine.get_attack_narrative(scenario_id)
             st.session_state.chat_history.append({
                 "role": "user",
@@ -60,7 +60,7 @@ def render_ai_chat():
             st.session_state.chat_history.append({"role": "assistant", "content": response})
             st.rerun()
     with col3:
-        if st.button("🔎 IOC List", use_container_width=True):
+        if st.button("🔎 IOC List", width="stretch"):
             response = ai_engine.get_ioc_list(scenario_id)
             st.session_state.chat_history.append({
                 "role": "user",
@@ -69,7 +69,7 @@ def render_ai_chat():
             st.session_state.chat_history.append({"role": "assistant", "content": response})
             st.rerun()
     with col4:
-        if st.button("🛡️ Recommendations", use_container_width=True):
+        if st.button("🛡️ Recommendations", width="stretch"):
             response = ai_engine.get_recommendations(scenario_id)
             st.session_state.chat_history.append({
                 "role": "user",
@@ -100,7 +100,7 @@ def render_ai_chat():
         cols = st.columns(2)
         for i, question in enumerate(SUGGESTED_QUESTIONS):
             with cols[i % 2]:
-                if st.button(question, key=f"sq_{i}", use_container_width=True):
+                if st.button(question, key=f"sq_{i}", width="stretch"):
                     st.session_state.chat_history.append({"role": "user", "content": question})
                     response = ai_engine.ask(question, scenario_id)
                     st.session_state.chat_history.append({"role": "assistant", "content": response})

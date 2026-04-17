@@ -68,7 +68,7 @@ def _render_evidence_loader():
         label_visibility="collapsed",
     )
 
-    if st.button("Validate & Load", type="primary", use_container_width=True):
+    if st.button("Validate & Load", type="primary", width="stretch"):
         if not file_path or not file_path.strip():
             st.warning("Please enter a file path first.")
             return
@@ -109,6 +109,23 @@ def _render_evidence_loader():
         with st.spinner("Running Volatility plugins — this may take a few minutes…"):
             plugin_results = st.session_state.vol_engine.run_all_plugins(file_path.strip())
 
+        success_count = sum(1 for result in plugin_results.values() if result.success)
+        non_empty_count = sum(1 for result in plugin_results.values() if result.success and result.row_count > 0)
+        failed = [f"{name}: {result.error or 'Unknown error'}" for name, result in plugin_results.items() if not result.success]
+
+        st.markdown(
+            f"<div style='color:#94a3b8;font-size:0.82rem;margin-top:0.6rem'>"
+            f"Plugin execution summary: {success_count}/{len(plugin_results)} succeeded, "
+            f"{non_empty_count} returned data rows."
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        if failed:
+            with st.expander("Plugin errors", expanded=False):
+                for item in failed:
+                    st.markdown(f"- {item}")
+
         st.session_state.plugin_results = plugin_results
         st.session_state.findings = st.session_state.detector.analyze_all(plugin_results)
         st.session_state.evidence_loaded = True
@@ -119,9 +136,23 @@ def _render_evidence_loader():
             f"- [{f.risk_level.upper()}] {f.title}: {f.description}"
             for f in st.session_state.findings[:20]
         )
+        if not findings_text:
+            findings_text = "No detections were produced by the current plugin output."
+
         st.session_state.ai_engine.set_context(findings_text, f"Evidence: {evidence.filename}")
 
-        info_banner("Evidence loaded and analysis complete! Head to the Dashboard to review findings.", "success")
+        if success_count == 0:
+            info_banner(
+                "Evidence loaded, but no Volatility plugins succeeded. Check plugin errors above and verify Volatility/profile support for this dump.",
+                "warning",
+            )
+        elif non_empty_count == 0:
+            info_banner(
+                "Evidence loaded, but plugins returned no parsed rows. Dashboard may remain empty until plugin output is available.",
+                "warning",
+            )
+        else:
+            info_banner("Evidence loaded and analysis complete! Head to the Dashboard to review findings.", "success")
 
 
 def _render_demo_scenarios():
@@ -167,7 +198,7 @@ def _render_demo_scenarios():
         if st.button(
             f"Load Scenario",
             key=f"load_{sid}",
-            use_container_width=True,
+            width="stretch",
         ):
             with st.spinner(f"Loading **{scenario['name']}**…"):
                 _load_demo_scenario(sid, scenario)

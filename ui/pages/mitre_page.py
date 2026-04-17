@@ -34,7 +34,7 @@ def render_mitre():
     st.markdown("")
 
     fig = create_mitre_heatmap(tactic_data)
-    st.plotly_chart(fig, use_container_width=True, key="mitre_heatmap")
+    st.plotly_chart(fig, width="stretch", key="mitre_heatmap")
 
     st.markdown("---")
     st.markdown("### Detected Techniques")
@@ -72,7 +72,7 @@ def render_mitre():
             return colors.get(val, "")
 
         styled = df.style.applymap(_color_severity, subset=["Max Severity"])
-        st.dataframe(styled, use_container_width=True, hide_index=True)
+        st.dataframe(styled, width="stretch", hide_index=True)
     else:
         info_banner("No MITRE techniques detected in current findings.", type_="info")
         return

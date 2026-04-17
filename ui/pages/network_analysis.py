@@ -51,7 +51,7 @@ def render_network_analysis():
 
     with tab_graph:
         fig = create_network_graph(connections)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         st.markdown("""
         <div style='display:flex;gap:24px;justify-content:center;padding:0.4rem 0 0.6rem 0;flex-wrap:wrap'>
@@ -138,7 +138,7 @@ def render_network_analysis():
             return [""] * len(row)
 
         styled = filtered_df.style.apply(_highlight_conn, axis=1)
-        st.dataframe(styled, use_container_width=True, height=min(500, 40 + len(filtered_df) * 35))
+        st.dataframe(styled, width="stretch", height=min(500, 40 + len(filtered_df) * 35))
 
         st.markdown(
             f"<div style='color:#64748b;font-size:0.78rem;text-align:right;padding:2px 4px'>"

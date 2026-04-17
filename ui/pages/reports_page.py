@@ -62,7 +62,7 @@ def render_reports():
         info_banner("Load a memory image from the Home page before generating reports.")
         return
 
-    findings = st.session_state.findings
+                if st.button("📄 Generate Report", type="primary", width="stretch"):
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -76,7 +76,7 @@ def render_reports():
 
     st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
-    col_config, col_preview = st.columns([1, 1], gap="large")
+                        width="stretch",
 
     with col_config:
         st.markdown(

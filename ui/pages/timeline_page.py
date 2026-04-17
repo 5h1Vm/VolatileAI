@@ -45,7 +45,7 @@ def render_timeline():
     st.markdown("")
 
     fig = create_timeline(events)
-    st.plotly_chart(fig, use_container_width=True, key="timeline_chart")
+    st.plotly_chart(fig, width="stretch", key="timeline_chart")
 
     st.markdown("---")
     st.markdown("### Event Details")

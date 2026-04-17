@@ -166,7 +166,7 @@ def _normalize_risk_levels(values: Dict[str, Any], defaults: Dict[str, Dict[str,
 
 BASE_DIR = Path(__file__).parent
 # Allows relocating data dir without code changes.
-DATA_DIR = Path(_env_str("VOLATILEAI_DATA_DIR", str(BASE_DIR / "idata"))).expanduser()
+DATA_DIR = Path(_env_str("VOLATILEAI_DATA_DIR", str(BASE_DIR / "data"))).expanduser()
 MITRE_DIR = DATA_DIR / "mitre"
 DEMO_DIR = DATA_DIR / "demo_scenarios"
 CACHE_DIR = DATA_DIR / "cached_responses"
