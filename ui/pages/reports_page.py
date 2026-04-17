@@ -115,7 +115,7 @@ def render_reports():
             scenarios = st.session_state.scenario_loader.list_scenarios()
             scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
 
-        if st.button("📄 Generate Report", type="primary", use_container_width=True):
+        if st.button("📄 Generate Report", type="primary", width="stretch"):
             if not case_number.strip():
                 st.warning("Please provide a case number.")
             else:
@@ -148,7 +148,7 @@ def render_reports():
                 data=st.session_state["_last_pdf"],
                 file_name=f"volatileai_report_{st.session_state.get('_last_case', 'report')}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
+                width="stretch",
             )
 
     with col_preview:

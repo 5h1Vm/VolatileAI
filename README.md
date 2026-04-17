@@ -33,7 +33,7 @@ Open **http://localhost:8502** in your browser.
 
 Five pre-built attack scenarios with realistic synthetic Volatility output for testing:
 
-If you remove those JSON files, the app will show no demo scenarios until you add new files to `idata/demo_scenarios/`.
+If you remove those JSON files, the app will show no demo scenarios until you add new files to `data/demo_scenarios/`.
 
 | Scenario | Description |
 |----------|-------------|
@@ -59,7 +59,7 @@ volatile_ai/
 │   ├── styles/theme.css      # Dark forensics theme
 │   ├── components/           # Reusable chart and metric components
 │   └── pages/                # 9 analysis pages
-├── idata/
+├── data/
 │   ├── demo_scenarios/       # 5 attack scenario datasets
 │   └── cached_responses/     # 118+ cached AI responses
 ├── reports/
@@ -78,6 +78,14 @@ volatile_ai/
 ## AI Analysis
 
 VolatileAI now supports multiple AI providers via environment variables:
+
+The easiest way is to copy `.env.example` to `.env` and edit values there.
+
+```bash
+cp .env.example .env
+```
+
+`run.sh` loads `.env` automatically at startup.
 
 - `ollama` (default)
 - `openai`

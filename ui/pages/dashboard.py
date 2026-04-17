@@ -79,6 +79,21 @@ def render_dashboard():
 
     if not top_findings:
         info_banner("No findings detected in the loaded evidence.", "info")
+        plugin_results = st.session_state.get("plugin_results", {})
+        if plugin_results:
+            succeeded = sum(1 for result in plugin_results.values() if result.success)
+            non_empty = sum(1 for result in plugin_results.values() if result.success and result.row_count > 0)
+            st.markdown(
+                f"<div style='color:#94a3b8;font-size:0.82rem;margin-top:0.35rem'>"
+                f"Plugin summary: {succeeded}/{len(plugin_results)} succeeded, {non_empty} returned data rows."
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            if succeeded == 0:
+                info_banner(
+                    "No plugin data was parsed. This is usually a Volatility/profile/runtime issue, not a UI issue.",
+                    "warning",
+                )
     else:
         for f in top_findings:
             finding_card(
