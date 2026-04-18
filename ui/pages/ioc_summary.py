@@ -49,11 +49,11 @@ def render_ioc_summary():
         for t in f.mitre_techniques:
             mitre_techniques.add(t)
 
-    total_iocs = len(suspicious_ips) + len(suspicious_processes) + len(suspicious_ports) + len(suspicious_services)
+    total_iocs = len(suspicious_ips) + len(suspicious_processes) + len(suspicious_services)
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        stat_card("Total IOCs", total_iocs, color="#c084fc")
+        stat_card("Confirmed IOCs", total_iocs, color="#c084fc")
     with c2:
         stat_card("Suspicious IPs", len(suspicious_ips), color="#ef4444")
     with c3:
@@ -91,7 +91,14 @@ def render_ioc_summary():
                 return f"color: {c}; font-weight: 700"
 
             styled = df.style.map(_color_risk, subset=["Risk Level"])
-            st.dataframe(styled, width="stretch", hide_index=True)
+            st.dataframe(
+                styled,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Risk Score": st.column_config.NumberColumn(format="%.1f"),
+                },
+            )
         else:
             info_banner("No suspicious external IP addresses detected.", type_="success")
 
@@ -110,7 +117,14 @@ def render_ioc_summary():
                 return f"color: {c}; font-weight: 700"
 
             styled = df.style.map(_color_risk, subset=["Risk Level"])
-            st.dataframe(styled, width="stretch", hide_index=True)
+            st.dataframe(
+                styled,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Risk Score": st.column_config.NumberColumn(format="%.1f"),
+                },
+            )
         else:
             info_banner("No suspicious processes detected.", type_="success")
 
@@ -192,6 +206,7 @@ def render_ioc_summary():
         export_lines.extend(sorted(mitre_techniques))
 
     export_text = "\n".join(export_lines) if export_lines else "No IOCs extracted."
+    export_text = export_text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
     st.text_area("IOC List (copy below)", value=export_text, height=220, label_visibility="collapsed")
 
     st.markdown("---")

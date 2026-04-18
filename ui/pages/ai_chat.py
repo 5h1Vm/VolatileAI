@@ -116,6 +116,10 @@ def render_ai_chat():
         info_banner("Latest AI response is ready below.", type_="success")
         with st.container():
             _render_chat_card("assistant", st.session_state.chat_history[-1]["content"])
+        st.markdown(
+            "<script>setTimeout(() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}), 100);</script>",
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
 

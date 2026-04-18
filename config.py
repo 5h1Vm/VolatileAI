@@ -217,7 +217,7 @@ _DEFAULT_RISK_LEVELS = deepcopy(RISK_LEVELS)
 
 VOLATILITY_PLUGINS_WINDOWS = [
     "windows.pslist", "windows.pstree", "windows.cmdline",
-    "windows.dlllist", "windows.netscan", "windows.malfind",
+    "windows.dlllist", "windows.netscan", "windows.malware.malfind",
     "windows.handles", "windows.svcscan", "windows.filescan",
     "windows.registry.hivelist",
 ]
@@ -257,6 +257,8 @@ SUSPICIOUS_PARENTS = {
     "pythonw.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
     "python3.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
     "node.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "perl.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "ruby.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
     "regsvr32.exe": ["winword.exe", "excel.exe", "cmd.exe", "powershell.exe"],
     "rundll32.exe": ["winword.exe", "excel.exe", "cmd.exe", "powershell.exe"],
     "certutil.exe": ["cmd.exe", "powershell.exe"],

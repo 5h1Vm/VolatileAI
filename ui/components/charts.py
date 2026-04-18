@@ -3,6 +3,7 @@
 from datetime import datetime
 
 import plotly.graph_objects as go
+import pandas as pd
 from typing import Dict, List, Any
 
 COLORS = {
@@ -207,7 +208,7 @@ def create_network_graph(connections: List[Dict]) -> go.Figure:
             node_color.append("#38bdf8")
             node_size.append(20)
         else:
-            node_color.append("#ef4444")
+            node_color.append("#f97316")
             node_size.append(15)
 
     fig = go.Figure()
@@ -236,8 +237,8 @@ def create_timeline(events: List[Dict]) -> go.Figure:
 
     categories = sorted({str(e.get("category", "unknown")).lower() for e in events})
     cat_to_index = {cat: idx for idx, cat in enumerate(categories)}
-    jitter_pattern = [-0.24, -0.12, 0.0, 0.12, 0.24]
     per_category_count: Dict[str, int] = {cat: 0 for cat in categories}
+    point_offsets: Dict[tuple, int] = {}
 
     xs = []
     ys = []
@@ -251,15 +252,22 @@ def create_timeline(events: List[Dict]) -> go.Figure:
     for evt in events:
         category = str(evt.get("category", "unknown")).lower()
         cat_idx = cat_to_index.get(category, 0)
-        offset_idx = per_category_count.get(category, 0) % len(jitter_pattern)
         per_category_count[category] = per_category_count.get(category, 0) + 1
 
         risk = float(evt.get("risk_score", 0) or 0)
         size = max(8, min(26, 8 + risk * 1.8))
 
         parsed_ts = _parse_timestamp(evt.get("timestamp", ""))
-        xs.append(parsed_ts or evt.get("timestamp", ""))
-        ys.append(cat_idx + jitter_pattern[offset_idx])
+        if parsed_ts:
+            offset_key = (parsed_ts, category)
+            offset_count = point_offsets.get(offset_key, 0)
+            point_offsets[offset_key] = offset_count + 1
+            ts_value = parsed_ts + pd.Timedelta(milliseconds=200 * offset_count)
+        else:
+            ts_value = evt.get("timestamp", "")
+
+        xs.append(ts_value)
+        ys.append(cat_idx)
         sizes.append(size)
         colors.append(cat_colors.get(category, "#94a3b8"))
         hover_titles.append(str(evt.get("title", "")))
@@ -312,7 +320,7 @@ def create_mitre_heatmap(tactic_data: Dict[str, List]) -> go.Figure:
         if tech_list:
             for t in tech_list:
                 tactics.append(tactic)
-                techniques.append(t["technique_name"][:25])
+                techniques.append(t["technique_name"])
                 severities.append(t["max_severity"])
 
     if not tactics:
@@ -336,6 +344,7 @@ def create_mitre_heatmap(tactic_data: Dict[str, List]) -> go.Figure:
     ))
 
     fig.update_layout(**DARK_LAYOUT, height=max(400, len(techniques) * 35),
+        margin=dict(l=280, r=30, t=50, b=40),
         title=dict(text="MITRE ATT&CK Detection Map", font=dict(size=15)),
         xaxis=dict(tickangle=-45, gridcolor="#1e293b"),
         yaxis=dict(gridcolor="#1e293b"))

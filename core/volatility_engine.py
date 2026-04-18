@@ -191,10 +191,24 @@ class VolatilityEngine:
         file_path: str,
         os_type: str = "windows",
         progress_callback: Optional[Callable[[int, int, str, str], None]] = None,
+        plugins: Optional[List[str]] = None,
     ) -> Dict[str, PluginResult]:
         from config import VOLATILITY_PLUGINS_WINDOWS, VOLATILITY_PLUGINS_LINUX
 
-        plugins = VOLATILITY_PLUGINS_WINDOWS if os_type == "windows" else VOLATILITY_PLUGINS_LINUX
+        all_known = VOLATILITY_PLUGINS_WINDOWS if os_type == "windows" else VOLATILITY_PLUGINS_LINUX
+        if plugins is not None:
+            # Preserve order while dropping unknown/duplicate plugin names.
+            seen = set()
+            plugins = [
+                plugin
+                for plugin in plugins
+                if plugin in all_known and not (plugin in seen or seen.add(plugin))
+            ]
+            if not plugins:
+                plugins = list(all_known)
+        else:
+            plugins = list(all_known)
+
         self._results.clear()
 
         total = len(plugins)

@@ -8,6 +8,56 @@ from ui.components.metrics import page_header, info_banner, stat_card
 from ui.components.charts import create_timeline
 
 
+def _format_memory_address(value):
+    try:
+        return hex(int(str(value).strip(), 10))
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _normalize_bool(value) -> str:
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    text = str(value).strip().lower()
+    return "Yes" if text in {"1", "true", "yes"} else "No"
+
+
+def _format_detail_item(key, value):
+    if str(key).startswith("__"):
+        return None
+
+    if value is None:
+        return None
+
+    text_value = str(value).strip()
+    if text_value == "" or text_value.lower() == "none":
+        return None
+
+    lower_key = str(key).lower()
+
+    if lower_key in {"privatememory", "private_memory"}:
+        return key, _normalize_bool(value), "text"
+
+    if lower_key in {"start vpn", "end vpn", "start_vpn", "end_vpn", "start", "end", "offset", "offset(v)", "offset(p)"}:
+        return key, _format_memory_address(value), "text"
+
+    if lower_key in {"disasm", "hexdump"}:
+        return key, text_value, "code"
+
+    if lower_key == "tag" and text_value == "VadS":
+        return key, "VadS (Virtual Address Descriptor, private/non file-backed region)", "text"
+
+    if lower_key == "commitcharge":
+        try:
+            pages = int(text_value)
+            kb = pages * 4
+            return key, f"{pages} pages (~{kb} KB)", "text"
+        except ValueError:
+            return key, text_value, "text"
+
+    return key, text_value, "text"
+
+
 def _format_timestamp(value):
     if value is None:
         return "Timestamp unavailable"
@@ -112,6 +162,8 @@ def render_timeline():
     with c3:
         stat_card("Avg Risk Score", f"{avg_risk:.1f}", color="#eab308")
 
+    st.caption("High-risk threshold: >= 7.0")
+
     st.markdown("")
 
     fig = create_timeline(events)
@@ -185,9 +237,25 @@ def render_timeline():
         if details:
             detail_label = textwrap.shorten(str(title), width=54, placeholder="…")
             with st.expander(f"Details — {detail_label}", expanded=False):
+                severity = "Critical" if risk >= 8 else "High" if risk >= 6 else "Medium" if risk >= 4 else "Low"
+                st.markdown(
+                    f"<span style='display:inline-block;background:{border_color}1f;color:{border_color};"
+                    f"border:1px solid {border_color}55;padding:2px 10px;border-radius:999px;"
+                    f"font-size:0.78rem;font-weight:700'>Severity: {severity} ({risk:.1f})</span>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown("<div style='height:0.45rem'></div>", unsafe_allow_html=True)
                 if isinstance(details, dict):
                     for k, v in details.items():
-                        st.markdown(f"**{k}:** `{v}`")
+                        formatted = _format_detail_item(k, v)
+                        if not formatted:
+                            continue
+                        fk, fv, render_mode = formatted
+                        if render_mode == "code":
+                            st.markdown(f"**{fk}:**")
+                            st.code(fv, language="text")
+                        else:
+                            st.markdown(f"**{fk}:** `{fv}`")
                 elif isinstance(details, list):
                     for item in details:
                         st.markdown(f"- {item}")

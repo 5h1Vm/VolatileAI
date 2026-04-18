@@ -69,6 +69,15 @@ def main():
     load_css()
     init_session_state()
 
+    # Keep analysis state coherent across all pages: when background work
+    # completes, apply payload once even if the user never visits Home first.
+    try:
+        from ui.pages.home import _apply_completed_analysis_if_needed
+        _apply_completed_analysis_if_needed()
+    except Exception:
+        # Sidebar/rendering should not fail if page helpers are unavailable.
+        pass
+
     with st.sidebar:
         st.markdown(
             f"""<div style='text-align:center;padding:1rem 0'>

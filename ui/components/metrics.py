@@ -70,7 +70,15 @@ def finding_card(title: str, description: str, risk_score: float,
         evidence_html = "<div style='color:#475569;font-size:0.7rem;margin-top:4px'>" + evidence_id + "</div>"
 
     score_str = "{:.1f}".format(risk_score)
-    desc_trunc = description[:200]
+    description = str(description or "")
+    max_desc_len = 280
+    if len(description) > max_desc_len:
+        cutoff = description.rfind(" ", 0, max_desc_len)
+        if cutoff <= 0:
+            cutoff = max_desc_len
+        desc_trunc = description[:cutoff].rstrip() + "..."
+    else:
+        desc_trunc = description
 
     status_label = ""
     status_color = ""

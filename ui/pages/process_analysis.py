@@ -141,6 +141,7 @@ def render_process_analysis():
                     category=finding.category,
                     techniques=finding.mitre_techniques,
                     evidence_id=finding.artifact_id,
+                    triage_status=getattr(finding, "triage_status", ""),
                 )
 
                 pid_str = finding.artifact_id.replace("PID:", "")

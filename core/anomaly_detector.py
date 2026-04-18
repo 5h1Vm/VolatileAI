@@ -50,7 +50,7 @@ class AnomalyDetector:
         pstree = plugin_results.get("windows.pstree", None)
         cmdline = plugin_results.get("windows.cmdline", None)
         netscan = plugin_results.get("windows.netscan", None)
-        malfind = plugin_results.get("windows.malfind", None)
+        malfind = plugin_results.get("windows.malware.malfind", None) or plugin_results.get("windows.malfind", None)
         dlllist = plugin_results.get("windows.dlllist", None)
         svcscan = plugin_results.get("windows.svcscan", None)
 
@@ -113,7 +113,7 @@ class AnomalyDetector:
 
             self._check_path_anomaly(name, cmdline, pid, info["raw"])
             self._check_parent_anomaly(name, parent_name, pid, info["raw"])
-            self._check_scripting_runtime_parent(name, parent_name, pid, info["raw"])
+            self._check_scripting_runtime_parent(name, parent_name, ppid, pid, info["raw"])
             self._check_name_spoofing(name, pid, info["raw"])
             self._check_suspicious_cmdline(name, cmdline, pid, info["raw"])
 
@@ -189,7 +189,7 @@ class AnomalyDetector:
                 mitre_techniques=["T1036"],
             ))
 
-    def _check_scripting_runtime_parent(self, name: str, parent_name: str, pid, raw: Dict):
+    def _check_scripting_runtime_parent(self, name: str, parent_name: str, ppid, pid, raw: Dict):
         runtime_names = {"python.exe", "pythonw.exe", "python3.exe", "node.exe", "perl.exe", "ruby.exe", "wscript.exe", "cscript.exe"}
         suspicious_parents = {"services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"}
 
@@ -203,6 +203,24 @@ class AnomalyDetector:
                 title=f"Scripting runtime spawned by service host: {name}",
                 description=f"{name} was spawned by {parent_name}, which is unusual and can indicate persistence or service-backed execution.",
                 risk_score=6.8,
+                evidence=raw,
+                triage_status="review",
+                mitre_techniques=["T1059.006", "T1543.003"],
+            ))
+            return
+
+        try:
+            ppid_int = int(ppid)
+        except (TypeError, ValueError):
+            ppid_int = -1
+
+        if parent_name == "unknown" and ppid_int > 4:
+            self.findings.append(Finding(
+                category="process",
+                artifact_id=f"PID:{pid}",
+                title=f"Scripting runtime with unresolved parent: {name}",
+                description=f"{name} has unresolved parent PPID {ppid_int}. This can indicate service-backed execution when parent process metadata is missing from snapshot.",
+                risk_score=6.2,
                 evidence=raw,
                 triage_status="review",
                 mitre_techniques=["T1059.006", "T1543.003"],
@@ -251,6 +269,7 @@ class AnomalyDetector:
 
     def _analyze_network(self, connections: List[Dict]):
         ip_connections: Dict[str, int] = {}
+        emitted_findings = set()
 
         for conn in connections:
             remote_addr = str(conn.get("ForeignAddr") or conn.get("foreign_addr") or conn.get("RemoteAddr") or "")
@@ -270,23 +289,42 @@ class AnomalyDetector:
             if remote_addr and remote_addr not in ("0.0.0.0", "::", "*", "127.0.0.1", "::1", "-"):
                 ip_connections[remote_addr] = ip_connections.get(remote_addr, 0) + 1
 
+            if remote_addr and remote_addr not in ("0.0.0.0", "::", "*", "127.0.0.1", "::1", "-") and "CLOSED" in state.upper():
+                dedup_key = ("closed-external", str(pid), remote_addr, int(remote_port or 0), int(local_port or 0))
+                if dedup_key not in emitted_findings:
+                    emitted_findings.add(dedup_key)
+                    self.findings.append(Finding(
+                        category="network", artifact_id=f"PID:{pid}",
+                        title=f"Closed external connection observed: {remote_addr}",
+                        description=f"Process {pid} shows a CLOSED connection to external endpoint {remote_addr}:{remote_port}. Review whether this endpoint is expected.",
+                        risk_score=4.8, evidence=conn,
+                        triage_status="review",
+                        mitre_techniques=["T1071"],
+                    ))
+
             if remote_port in SUSPICIOUS_PORTS:
-                self.findings.append(Finding(
-                    category="network", artifact_id=f"PID:{pid}",
-                    title=f"Connection to suspicious port {remote_port}",
-                    description=f"Process {pid} connected to {remote_addr}:{remote_port}. Port {remote_port} is commonly associated with malware/C2.",
-                    risk_score=7.5, evidence=conn,
-                    mitre_techniques=["T1071"],
-                ))
+                dedup_key = ("suspicious-remote-port", str(pid), remote_addr, int(remote_port or 0), int(local_port or 0))
+                if dedup_key not in emitted_findings:
+                    emitted_findings.add(dedup_key)
+                    self.findings.append(Finding(
+                        category="network", artifact_id=f"PID:{pid}",
+                        title=f"Connection to suspicious port {remote_port}",
+                        description=f"Process {pid} connected to {remote_addr}:{remote_port}. Port {remote_port} is commonly associated with malware/C2.",
+                        risk_score=7.5, evidence=conn,
+                        mitre_techniques=["T1071"],
+                    ))
 
             if local_port in SUSPICIOUS_PORTS and "LISTEN" in state.upper():
-                self.findings.append(Finding(
-                    category="network", artifact_id=f"PID:{pid}",
-                    title=f"Listening on suspicious port {local_port}",
-                    description=f"Process {pid} is listening on port {local_port}, commonly used by backdoors/RATs.",
-                    risk_score=8.0, evidence=conn,
-                    mitre_techniques=["T1571"],
-                ))
+                dedup_key = ("suspicious-listen-port", str(pid), int(local_port or 0))
+                if dedup_key not in emitted_findings:
+                    emitted_findings.add(dedup_key)
+                    self.findings.append(Finding(
+                        category="network", artifact_id=f"PID:{pid}",
+                        title=f"Listening on suspicious port {local_port}",
+                        description=f"Process {pid} is listening on port {local_port}, commonly used by backdoors/RATs.",
+                        risk_score=8.0, evidence=conn,
+                        mitre_techniques=["T1571"],
+                    ))
 
         for ip, count in ip_connections.items():
             # Require stronger beaconing signal to reduce benign chatty-host alerts.

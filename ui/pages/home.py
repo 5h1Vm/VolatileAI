@@ -6,10 +6,47 @@ import traceback
 from html import escape
 
 import streamlit as st
+from config import VOLATILITY_PLUGINS_WINDOWS
 from ui.components.metrics import info_banner
 
 
-def _start_background_analysis(file_path: str, evidence):
+PLUGIN_LABELS = {
+    "windows.pslist": "Process List (pslist) - fast",
+    "windows.pstree": "Process Tree (pstree) - fast",
+    "windows.cmdline": "Command Lines (cmdline) - fast",
+    "windows.dlllist": "DLL List (dlllist) - medium",
+    "windows.netscan": "Network Connections (netscan) - fast",
+    "windows.malfind": "Injection Scanner (malfind) - SLOW ~60s",
+    "windows.malware.malfind": "Injection Scanner (malfind) - SLOW ~60s",
+    "windows.handles": "Handles (handles) - VERY SLOW ~90s",
+    "windows.svcscan": "Services (svcscan) - fast",
+    "windows.filescan": "File Scan (filescan) - SLOW ~45s",
+    "windows.registry.hivelist": "Registry Hives (hivelist) - fast",
+}
+
+_MALFIND_PLUGIN = (
+    "windows.malware.malfind"
+    if "windows.malware.malfind" in VOLATILITY_PLUGINS_WINDOWS
+    else "windows.malfind"
+)
+
+PRESET_PROFILES = {
+    "Quick Triage (no slow plugins)": [
+        "windows.pslist",
+        "windows.pstree",
+        "windows.cmdline",
+        "windows.netscan",
+        "windows.svcscan",
+        "windows.registry.hivelist",
+    ],
+    "Full Analysis (all plugins)": VOLATILITY_PLUGINS_WINDOWS,
+    "Network Focus": ["windows.pslist", "windows.netscan"],
+    "Injection Focus": ["windows.pslist", "windows.pstree", _MALFIND_PLUGIN, "windows.dlllist"],
+    "Custom": None,
+}
+
+
+def _start_background_analysis(file_path: str, evidence, plugins: list = None):
     status = st.session_state.analysis_status
     lock = st.session_state.analysis_lock
     vol_engine = st.session_state.vol_engine
@@ -58,6 +95,7 @@ def _start_background_analysis(file_path: str, evidence):
             plugin_results = vol_engine.run_all_plugins(
                 file_path,
                 progress_callback=_on_progress,
+                plugins=plugins,
             )
             findings = detector.analyze_all(plugin_results)
             confirmed_mitre = ", ".join(sorted({t for f in findings for t in f.mitre_techniques}))
@@ -330,6 +368,51 @@ def _render_evidence_loader():
         label_visibility="collapsed",
     )
 
+    if "plugin_preset" not in st.session_state:
+        st.session_state.plugin_preset = "Quick Triage (no slow plugins)"
+    if "plugin_preset_prev" not in st.session_state:
+        st.session_state.plugin_preset_prev = st.session_state.plugin_preset
+    if "selected_plugins" not in st.session_state:
+        st.session_state.selected_plugins = list(PRESET_PROFILES["Quick Triage (no slow plugins)"])
+
+    # Plugin selector
+    with st.expander("Plugin Selection", expanded=False):
+        preset = st.selectbox(
+            "Preset profile",
+            list(PRESET_PROFILES.keys()),
+            index=list(PRESET_PROFILES.keys()).index(st.session_state.plugin_preset),
+            key="plugin_preset",
+        )
+        preset_plugins = PRESET_PROFILES[preset]
+        is_custom = preset_plugins is None
+
+        if st.session_state.plugin_preset_prev != preset:
+            st.session_state.plugin_preset_prev = preset
+            if not is_custom:
+                st.session_state.selected_plugins = list(preset_plugins)
+
+        selected_plugins = st.multiselect(
+            "Plugins to run",
+            options=VOLATILITY_PLUGINS_WINDOWS,
+            default=st.session_state.selected_plugins,
+            format_func=lambda p: PLUGIN_LABELS.get(p, p),
+            key="selected_plugins",
+            disabled=(not is_custom),
+            help="Plugins marked SLOW can take 45-90 seconds each on larger memory dumps.",
+        )
+
+        if not selected_plugins:
+            st.warning("Select at least one plugin.")
+
+        slow = {"windows.malfind", "windows.malware.malfind", "windows.handles", "windows.filescan"}
+        chosen_slow = slow & set(selected_plugins)
+        if chosen_slow:
+            slow_names = ", ".join(sorted(PLUGIN_LABELS[p].split(" (")[0] for p in chosen_slow))
+            st.caption(f"Slow plugins selected: {slow_names}. Expect longer wait.")
+
+        if "windows.malfind" not in selected_plugins and "windows.malware.malfind" not in selected_plugins:
+            st.caption("malfind excluded - injection findings will be unavailable.")
+
     analysis_running = status.get("state") == "running"
 
     if analysis_running:
@@ -345,7 +428,7 @@ def _render_evidence_loader():
         "Validate & Load",
         type="primary",
         width="stretch",
-        disabled=analysis_running or analysis_done,
+        disabled=analysis_running or analysis_done or not st.session_state.get("selected_plugins"),
     )
 
     if load_clicked:
@@ -370,7 +453,8 @@ def _render_evidence_loader():
 
         st.session_state.evidence_info = evidence
 
-        _start_background_analysis(file_path.strip(), evidence)
+        chosen = st.session_state.get("selected_plugins") or VOLATILITY_PLUGINS_WINDOWS
+        _start_background_analysis(file_path.strip(), evidence, plugins=chosen)
         st.rerun()
 
 

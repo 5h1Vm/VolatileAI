@@ -61,6 +61,7 @@ def render_network_analysis():
     with tab_graph:
         fig = create_network_graph(connections)
         st.plotly_chart(fig, width="stretch")
+        st.caption("Graph colors: blue = local address, orange = external address (not automatically malicious).")
 
         st.markdown("""
         <div style='display:flex;gap:24px;justify-content:center;padding:0.4rem 0 0.6rem 0;flex-wrap:wrap'>
@@ -69,8 +70,8 @@ def render_network_analysis():
                 <span style='color:#94a3b8;font-size:0.82rem'>Local Address</span>
             </div>
             <div style='display:flex;align-items:center;gap:6px'>
-                <span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#ef4444'></span>
-                <span style='color:#94a3b8;font-size:0.82rem'>Remote Address</span>
+                <span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316'></span>
+                <span style='color:#94a3b8;font-size:0.82rem'>External Address</span>
             </div>
             <div style='display:flex;align-items:center;gap:6px'>
                 <span style='display:inline-block;width:18px;height:2px;background:rgba(148,163,184,0.4)'></span>
@@ -148,15 +149,16 @@ def render_network_analysis():
         st.dataframe(
             styled,
             use_container_width=True,
+            hide_index=True,
             height=min(500, 40 + len(filtered_df) * 35),
             column_config={
                 "Protocol": st.column_config.TextColumn(width="small"),
                 "Local Port": st.column_config.TextColumn(width="small"),
                 "Remote Address": st.column_config.TextColumn(width="medium"),
-                "Remote Port": st.column_config.TextColumn(width="small"),
+                "Remote Port": st.column_config.TextColumn(width="medium"),
                 "State": st.column_config.TextColumn(width="small"),
-                "PID": st.column_config.TextColumn(width="small"),
-                "Owner": st.column_config.TextColumn(width="medium"),
+                "PID": st.column_config.TextColumn(width="medium"),
+                "Owner": st.column_config.TextColumn(width="small"),
             },
         )
 
@@ -180,4 +182,5 @@ def render_network_analysis():
                     category=finding.category,
                     techniques=finding.mitre_techniques,
                     evidence_id=finding.artifact_id,
+                    triage_status=getattr(finding, "triage_status", ""),
                 )

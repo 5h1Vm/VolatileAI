@@ -28,11 +28,11 @@ def render_mitre():
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        stat_card("Total Techniques Detected", total_techniques, color="#ef4444")
+        stat_card("Total Techniques", total_techniques, color="#ef4444")
     with c2:
         stat_card("Tactics Covered", tactics_covered, color="#f97316")
     with c3:
-        stat_card("Highest Severity Technique", highest_label, color="#eab308")
+        stat_card("Highest Severity", highest_label, color="#eab308")
 
     st.markdown("")
 
@@ -55,11 +55,11 @@ def render_mitre():
             else:
                 sev_label = "Low"
             rows.append({
-                "Technique ID": tech.get("technique_id", ""),
+                "Technique": tech.get("technique_id", ""),
                 "Name": tech.get("name", ""),
                 "Tactic": tech.get("tactic", ""),
-                "Finding Count": tech.get("finding_count", 0),
-                "Max Severity": sev_label,
+                "Count": tech.get("finding_count", 0),
+                "Severity": sev_label,
                 "Description": tech.get("description", "")[:120],
             })
 
@@ -74,8 +74,20 @@ def render_mitre():
             }
             return colors.get(val, "")
 
-        styled = df.style.map(_color_severity, subset=["Max Severity"])
-        st.dataframe(styled, width="stretch", hide_index=True)
+        styled = df.style.map(_color_severity, subset=["Severity"])
+        st.dataframe(
+            styled,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "Technique": st.column_config.TextColumn(width="small"),
+                "Name": st.column_config.TextColumn(width="medium"),
+                "Tactic": st.column_config.TextColumn(width="small"),
+                "Count": st.column_config.NumberColumn(width="small"),
+                "Severity": st.column_config.TextColumn(width="small"),
+                "Description": st.column_config.TextColumn(width="large"),
+            },
+        )
     else:
         info_banner("No MITRE techniques detected in current findings.", type_="info")
         return
