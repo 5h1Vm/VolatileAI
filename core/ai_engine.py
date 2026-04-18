@@ -1,5 +1,7 @@
 """AI analysis engine — provider routing with strict offline behavior."""
 
+import time
+
 import requests
 from typing import Dict, List
 
@@ -32,6 +34,54 @@ class AIEngine:
         self._active_base_url = OLLAMA_BASE_URL
         self._context_data: str = ""
         self._confirmed_mitre_ids: str = ""
+
+    def _retry_after_seconds(self, response: requests.Response, default_delay: float) -> float:
+        retry_after = response.headers.get("Retry-After", "")
+        try:
+            if retry_after:
+                return max(float(retry_after), 0.0)
+        except (TypeError, ValueError):
+            pass
+        return default_delay
+
+    def _is_transient_status(self, status_code: int) -> bool:
+        return status_code in {429, 500, 502, 503, 504}
+
+    def _post_with_backoff(
+        self,
+        *,
+        url: str,
+        headers: Dict[str, str],
+        json_payload: Dict,
+        timeout: int,
+        provider_name: str,
+        max_attempts: int = 3,
+    ) -> requests.Response:
+        last_response = None
+
+        for attempt in range(1, max_attempts + 1):
+            response = requests.post(
+                url,
+                headers=headers,
+                json=json_payload,
+                timeout=timeout,
+            )
+            last_response = response
+
+            if response.status_code == 200 or not self._is_transient_status(response.status_code):
+                return response
+
+            if attempt >= max_attempts:
+                return response
+
+            if response.status_code == 429:
+                delay = self._retry_after_seconds(response, default_delay=2.0 * attempt)
+            else:
+                delay = 1.5 * attempt
+
+            time.sleep(min(delay, 8.0))
+
+        return last_response
 
     @property
     def provider(self) -> str:
@@ -287,13 +337,13 @@ When answering questions:
 
         prompt = f"{self._context_data}\n\nUser Question: {question}\n\nProvide a detailed forensic analysis response:"
         try:
-            r = requests.post(
-                f"{base_url}/chat/completions",
+            r = self._post_with_backoff(
+                url=f"{base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
+                json_payload={
                     "model": model,
                     "messages": [
                         {"role": "system", "content": self._system_prompt()},
@@ -303,6 +353,7 @@ When answering questions:
                     "max_tokens": 1024,
                 },
                 timeout=AI_TIMEOUT_SECONDS,
+                provider_name=provider_name,
             )
 
             if r.status_code == 200:
@@ -315,6 +366,13 @@ When answering questions:
                         if isinstance(content, str) and content.strip():
                             return content
                 return f"{provider_name} returned an empty response."
+
+            if r.status_code == 429:
+                return (
+                    f"{provider_name} rate limit reached for the current API key. "
+                    "Wait briefly and retry, or reduce request frequency. "
+                    f"Details: {self._extract_error_text(r) or 'No error details from server.'}"
+                )
 
             return (
                 f"{provider_name} API returned status {r.status_code}. "
@@ -334,14 +392,14 @@ When answering questions:
             f"{self._context_data}\n\nUser Question: {question}\n\nProvide a detailed forensic analysis response:"
         )
         try:
-            r = requests.post(
-                f"{ANTHROPIC_BASE_URL}/messages",
+            r = self._post_with_backoff(
+                url=f"{ANTHROPIC_BASE_URL}/messages",
                 headers={
                     "x-api-key": ANTHROPIC_API_KEY,
                     "anthropic-version": "2023-06-01",
                     "Content-Type": "application/json",
                 },
-                json={
+                json_payload={
                     "model": ANTHROPIC_MODEL,
                     "max_tokens": 1024,
                     "temperature": 0.3,
@@ -349,6 +407,7 @@ When answering questions:
                     "messages": [{"role": "user", "content": prompt}],
                 },
                 timeout=AI_TIMEOUT_SECONDS,
+                provider_name="Anthropic",
             )
 
             if r.status_code == 200:
@@ -364,6 +423,13 @@ When answering questions:
                     if texts:
                         return "\n\n".join(texts)
                 return "Anthropic returned an empty response."
+
+                if r.status_code == 429:
+                    return (
+                        "Anthropic rate limit reached for the current API key. "
+                        "Wait briefly and retry, or reduce request frequency. "
+                        f"Details: {self._extract_error_text(r) or 'No error details from server.'}"
+                    )
 
             return (
                 f"Anthropic API returned status {r.status_code}. "

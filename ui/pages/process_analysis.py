@@ -12,6 +12,12 @@ SUSPICIOUS_PARENTS = {
     "lsass.exe": ["wininit.exe"],
     "csrss.exe": ["smss.exe"],
     "winlogon.exe": ["smss.exe"],
+    "python.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "pythonw.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "python3.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "node.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "perl.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
+    "ruby.exe": ["services.exe", "svchost.exe", "lsass.exe", "winlogon.exe"],
 }
 
 

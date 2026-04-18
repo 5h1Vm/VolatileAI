@@ -269,7 +269,7 @@ class AnomalyDetector:
 
     def _analyze_network(self, connections: List[Dict]):
         ip_connections: Dict[str, int] = {}
-        emitted_findings = set()
+        endpoint_findings: Dict[tuple, Dict] = {}
 
         for conn in connections:
             remote_addr = str(conn.get("ForeignAddr") or conn.get("foreign_addr") or conn.get("RemoteAddr") or "")
@@ -289,54 +289,76 @@ class AnomalyDetector:
             if remote_addr and remote_addr not in ("0.0.0.0", "::", "*", "127.0.0.1", "::1", "-"):
                 ip_connections[remote_addr] = ip_connections.get(remote_addr, 0) + 1
 
-            if remote_addr and remote_addr not in ("0.0.0.0", "::", "*", "127.0.0.1", "::1", "-") and "CLOSED" in state.upper():
-                dedup_key = ("closed-external", str(pid), remote_addr, int(remote_port or 0), int(local_port or 0))
-                if dedup_key not in emitted_findings:
-                    emitted_findings.add(dedup_key)
-                    self.findings.append(Finding(
-                        category="network", artifact_id=f"PID:{pid}",
-                        title=f"Closed external connection observed: {remote_addr}",
-                        description=f"Process {pid} shows a CLOSED connection to external endpoint {remote_addr}:{remote_port}. Review whether this endpoint is expected.",
-                        risk_score=4.8, evidence=conn,
-                        triage_status="review",
-                        mitre_techniques=["T1071"],
-                    ))
+            if remote_addr and remote_addr not in ("0.0.0.0", "::", "*", "127.0.0.1", "::1", "-"):
+                endpoint_key = (str(pid), remote_addr)
+                record = endpoint_findings.setdefault(endpoint_key, {
+                    "evidence": conn,
+                    "reasons": [],
+                    "risk_score": 0.0,
+                    "mitre_techniques": set(),
+                    "title": "",
+                })
+                record["evidence"] = conn
 
-            if remote_port in SUSPICIOUS_PORTS:
-                dedup_key = ("suspicious-remote-port", str(pid), remote_addr, int(remote_port or 0), int(local_port or 0))
-                if dedup_key not in emitted_findings:
-                    emitted_findings.add(dedup_key)
-                    self.findings.append(Finding(
-                        category="network", artifact_id=f"PID:{pid}",
-                        title=f"Connection to suspicious port {remote_port}",
-                        description=f"Process {pid} connected to {remote_addr}:{remote_port}. Port {remote_port} is commonly associated with malware/C2.",
-                        risk_score=7.5, evidence=conn,
-                        mitre_techniques=["T1071"],
-                    ))
+                if "CLOSED" in state.upper():
+                    record["reasons"].append(f"CLOSED connection to {remote_addr}:{remote_port}")
+                    record["risk_score"] = max(record["risk_score"], 4.8)
+                    record["mitre_techniques"].add("T1071")
+                    if not record["title"]:
+                        record["title"] = f"Closed external connection observed: {remote_addr}"
+
+                if remote_port in SUSPICIOUS_PORTS:
+                    record["reasons"].append(f"suspicious remote port {remote_port}")
+                    record["risk_score"] = max(record["risk_score"], 7.5)
+                    record["mitre_techniques"].add("T1071")
+                    record["title"] = f"Connection to suspicious port {remote_port}"
+
+                if ip_connections.get(remote_addr, 0) >= 12:
+                    record["reasons"].append(f"high-frequency beaconing pattern ({ip_connections[remote_addr]} connections)")
+                    record["risk_score"] = max(record["risk_score"], 6.2 if ip_connections[remote_addr] < 20 else 8.0)
+                    record["mitre_techniques"].update({"T1071", "T1041"})
+                    if not record["title"]:
+                        record["title"] = f"High-frequency connections to {remote_addr}"
 
             if local_port in SUSPICIOUS_PORTS and "LISTEN" in state.upper():
-                dedup_key = ("suspicious-listen-port", str(pid), int(local_port or 0))
-                if dedup_key not in emitted_findings:
-                    emitted_findings.add(dedup_key)
-                    self.findings.append(Finding(
-                        category="network", artifact_id=f"PID:{pid}",
-                        title=f"Listening on suspicious port {local_port}",
-                        description=f"Process {pid} is listening on port {local_port}, commonly used by backdoors/RATs.",
-                        risk_score=8.0, evidence=conn,
-                        mitre_techniques=["T1571"],
-                    ))
+                endpoint_key = (str(pid), f"listen:{int(local_port or 0)}")
+                record = endpoint_findings.setdefault(endpoint_key, {
+                    "evidence": conn,
+                    "reasons": [],
+                    "risk_score": 0.0,
+                    "mitre_techniques": set(),
+                    "title": f"Listening on suspicious port {local_port}",
+                })
+                record["evidence"] = conn
+                record["reasons"].append(f"LISTEN on suspicious local port {local_port}")
+                record["risk_score"] = max(record["risk_score"], 8.0)
+                record["mitre_techniques"].add("T1571")
 
-        for ip, count in ip_connections.items():
-            # Require stronger beaconing signal to reduce benign chatty-host alerts.
-            if count >= 12:
-                self.findings.append(Finding(
-                    category="network", artifact_id=f"IP:{ip}",
-                    title=f"High-frequency connections to {ip}",
-                    description=f"{count} connections to {ip} detected. May indicate C2 beaconing or data exfiltration.",
-                    risk_score=6.2 if count < 20 else 8.0,
-                    evidence={"ip": ip, "connection_count": count},
-                    mitre_techniques=["T1071", "T1041"],
-                ))
+        for (pid_key, entity), record in endpoint_findings.items():
+            title = record["title"] or f"Suspicious network activity for {entity}"
+            reasons = record["reasons"]
+            if reasons:
+                if len(reasons) == 1:
+                    description = f"Process {pid_key} shows {reasons[0]}. Review whether this endpoint is expected."
+                else:
+                    description = (
+                        f"Process {pid_key} shows multiple indicators for {entity}: "
+                        + "; ".join(reasons)
+                        + ". Review whether this endpoint is expected."
+                    )
+            else:
+                description = f"Process {pid_key} shows suspicious network activity for {entity}. Review whether this endpoint is expected."
+
+            self.findings.append(Finding(
+                category="network",
+                artifact_id=f"PID:{pid_key}",
+                title=title,
+                description=description,
+                risk_score=record["risk_score"] or 4.8,
+                evidence=record["evidence"],
+                triage_status="review" if record["risk_score"] < 6.0 else "malicious",
+                mitre_techniques=sorted(record["mitre_techniques"] or {"T1071"}),
+            ))
 
     def _analyze_injections(self, malfind_data: List[Dict], process_index: Dict[int, Dict]):
         seen_pids = set()
