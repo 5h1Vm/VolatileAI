@@ -338,6 +338,12 @@ python3 -m volatility3 -h | head
 3. For Ollama, verify service and model availability.
 4. Review logs for auth/network/rate-limit errors.
 
+4. Direct page URL opens a blank page:
+1. This is expected in the current Streamlit navigation model used by this app.
+2. Routes such as /Dashboard or /Process_Analysis are not independent deep-linkable views.
+3. Open the root app URL and navigate using the sidebar page selector.
+4. Treat this as expected behavior, not a product defect.
+
 ---
 
 ## 16) Citation / Project Description Snippet
