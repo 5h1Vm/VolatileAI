@@ -154,7 +154,7 @@ def render_network_analysis():
         styled = filtered_df.style.apply(_highlight_conn, axis=1)
         st.dataframe(
             styled,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             height=min(500, 40 + len(filtered_df) * 35),
             column_config={

@@ -130,7 +130,7 @@ def render_process_analysis():
                 return [""] * len(row)
 
             styled_df = df.style.apply(_highlight_suspicious, axis=1)
-            st.dataframe(styled_df, use_container_width=True, height=min(400, 40 + len(df) * 35))
+            st.dataframe(styled_df, width="stretch", height=min(400, 40 + len(df) * 35))
 
         st.markdown("---")
         st.markdown("<h4 style='color:#f1f5f9;font-weight:700'>Suspicious Processes</h4>", unsafe_allow_html=True)
