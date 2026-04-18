@@ -1,8 +1,7 @@
-"""AI analysis engine — Ollama integration with caching and RAG."""
+"""AI analysis engine — provider routing with strict offline behavior."""
 
-import json
 import requests
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from config import (
     AI_PROVIDER,
@@ -10,7 +9,6 @@ from config import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_BASE_URL,
     ANTHROPIC_MODEL,
-    CACHE_DIR,
     GROQ_API_KEY,
     GROQ_BASE_URL,
     GROQ_MODEL,
@@ -26,15 +24,13 @@ from config import (
 
 
 class AIEngine:
-    """Handles AI analysis with provider routing and intelligent caching."""
+    """Handles AI analysis with provider routing only (no mock/cache fallback)."""
 
     def __init__(self):
         self._ollama_available = False
         self._provider = AI_PROVIDER
         self._active_base_url = OLLAMA_BASE_URL
-        self._cached_responses: Dict[str, str] = {}
         self._context_data: str = ""
-        self._load_cached_responses()
 
     @property
     def provider(self) -> str:
@@ -144,13 +140,13 @@ class AIEngine:
             return {
                 "connected": False,
                 "dot": "#eab308",
-                "message": "Ollama unavailable — using cached responses",
+                "message": "Ollama unavailable — offline",
             }
 
         return {
             "connected": False,
             "dot": "#f97316",
-            "message": f"{self.provider_label} unavailable or missing API key — using cached responses",
+            "message": f"{self.provider_label} unavailable or missing API key — offline",
         }
 
     def set_context(self, findings_summary: str, plugin_data_summary: str):
@@ -176,17 +172,8 @@ When answering questions:
 """
 
     def ask(self, question: str, scenario_id: str = "") -> str:
-        cache_key = self._make_cache_key(question, scenario_id)
-        cached = self._cached_responses.get(cache_key)
-        if cached:
-            return cached
-
-        fuzzy = self._fuzzy_match(question, scenario_id)
-        if fuzzy:
-            return fuzzy
-
         if not self.check_provider():
-            return self._fallback_response(question)
+            return self._offline_response(question)
 
         if self._provider == "ollama":
             return self._query_ollama(question)
@@ -217,7 +204,7 @@ When answering questions:
         if self._provider == "anthropic":
             return self._query_anthropic(question)
 
-        return self._fallback_response(question)
+        return self._offline_response(question)
 
     def _query_ollama(self, question: str) -> str:
         if not self._ollama_available:
@@ -402,38 +389,7 @@ When answering questions:
             "Then set OLLAMA_MODEL to one of those models and restart the app."
         )
 
-    def _make_cache_key(self, question: str, scenario_id: str = "") -> str:
-        normalized = question.lower().strip().rstrip("?").strip()
-        return f"{scenario_id}:{normalized}" if scenario_id else normalized
-
-    def _fuzzy_match(self, question: str, scenario_id: str = "") -> Optional[str]:
-        q_lower = question.lower().strip()
-        q_words = set(q_lower.split())
-
-        best_match = None
-        best_score = 0
-
-        for key, response in self._cached_responses.items():
-            if scenario_id and not key.startswith(scenario_id + ":"):
-                if ":" in key and not key.startswith("general:"):
-                    continue
-
-            key_clean = key.split(":", 1)[-1] if ":" in key else key
-            key_words = set(key_clean.lower().split())
-
-            if not key_words:
-                continue
-
-            overlap = len(q_words & key_words)
-            score = overlap / max(len(q_words | key_words), 1)
-
-            if score > best_score and score >= 0.45:
-                best_score = score
-                best_match = response
-
-        return best_match
-
-    def _fallback_response(self, question: str) -> str:
+    def _offline_response(self, question: str) -> str:
         provider_hint = {
             "ollama": (
                 "Ollama is not currently running or reachable.\n"
@@ -447,28 +403,11 @@ When answering questions:
             "opentext": "Set `OPENTEXT_API_KEY`, `OPENTEXT_BASE_URL`, and `OPENTEXT_MODEL` to enable live analysis.",
         }
         return (
-            "**AI Analysis (Offline Mode)**\n\n"
+            "**AI Analysis Unavailable (Offline)**\n\n"
             f"Configured provider: **{self.provider_label}**\n\n"
-            f"{provider_hint.get(self._provider, 'Configure a valid provider and credentials.')}\n\n"
-            "If no cached responses are present, AI answers will be limited until the provider is online."
+            "No cached, mock, or synthetic responses are used in offline mode.\n"
+            f"{provider_hint.get(self._provider, 'Configure a valid provider and credentials.')}"
         )
-
-    def _load_cached_responses(self):
-        self._cached_responses.clear()
-        if not CACHE_DIR.exists():
-            return
-
-        for json_file in CACHE_DIR.glob("*.json"):
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                if isinstance(data, dict):
-                    for key, val in data.items():
-                        if isinstance(val, dict):
-                            val = val.get("response", str(val))
-                        self._cached_responses[key.lower().strip()] = str(val)
-            except Exception:
-                pass
 
     def get_auto_analysis(self, scenario_id: str = "") -> str:
         return self.ask("Summarize the findings and provide an overall assessment", scenario_id)

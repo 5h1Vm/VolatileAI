@@ -95,13 +95,10 @@ VolatileAI addresses this by combining structured plugin execution, explainable 
 
 ### 4.6 Data Directories (Current State)
 
-1. `data/cached_responses/` - present, currently empty.
-2. `data/demo_scenarios/` - present, currently empty.
-3. `data/mitre/` - present, currently empty.
-4. `evidence/` - currently empty.
-5. `logs/` - contains runtime log files from launches.
+1. `evidence/` - currently empty.
+2. `logs/` - contains runtime log files from launches.
 
-Note: Code supports demo scenarios and cache files, but these directories are empty in the current workspace state.
+Note: Demo scenario and cached AI response features are disabled.
 
 ---
 
@@ -173,7 +170,7 @@ Responsibilities:
 
 ## 7.2 Key Runtime Variables
 
-1. Paths: `DATA_DIR`, `DEMO_DIR`, `CACHE_DIR`, `EVIDENCE_DIR`, `REPORTS_DIR`.
+1. Paths: `EVIDENCE_DIR`, `REPORTS_DIR`.
 2. AI provider: `VOLATILEAI_AI_PROVIDER` with allowed values `ollama`, `openai`, `anthropic`, `groq`, `opentext`.
 3. Provider credentials and model selection.
 4. Plugin lists for Windows/Linux.
@@ -327,11 +324,8 @@ This affects local and remote providers equally because all route through shared
 
 ## 9.5 `core/scenario_loader.py`
 
-1. Loads optional `scenario_*.json` from `data/demo_scenarios`.
-2. Lists scenarios and plugin datasets.
-3. Builds timeline event list from process/network/findings.
-
-Current runtime note: scenario directory exists but is empty in this workspace.
+1. Scenario loader is disabled and returns no synthetic scenario data.
+2. Timeline helper methods remain available for real finding/event composition.
 
 ---
 

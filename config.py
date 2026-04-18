@@ -165,11 +165,6 @@ def _normalize_risk_levels(values: Dict[str, Any], defaults: Dict[str, Dict[str,
     return normalized
 
 BASE_DIR = Path(__file__).parent
-# Allows relocating data dir without code changes.
-DATA_DIR = Path(_env_str("VOLATILEAI_DATA_DIR", str(BASE_DIR / "data"))).expanduser()
-MITRE_DIR = DATA_DIR / "mitre"
-DEMO_DIR = DATA_DIR / "demo_scenarios"
-CACHE_DIR = DATA_DIR / "cached_responses"
 EVIDENCE_DIR = BASE_DIR / "evidence"
 REPORTS_DIR = BASE_DIR / "reports" / "output"
 
@@ -314,7 +309,7 @@ def _apply_environment_overrides() -> None:
 
 def validate_and_normalize_config() -> None:
     """Ensure config values remain safe and usable after edits/overrides."""
-    global DATA_DIR, MITRE_DIR, DEMO_DIR, CACHE_DIR, EVIDENCE_DIR, REPORTS_DIR
+    global EVIDENCE_DIR, REPORTS_DIR
     global SUPPORTED_FORMATS, OLLAMA_BASE_URL, OLLAMA_MODEL
     global AI_PROVIDER, AI_TIMEOUT_SECONDS
     global OPENAI_BASE_URL, OPENAI_MODEL, OPENAI_API_KEY
@@ -326,14 +321,10 @@ def validate_and_normalize_config() -> None:
     global BENIGN_INJECTION_PROCESSES
 
     # Normalize core paths and ensure runtime directories exist.
-    DATA_DIR = Path(DATA_DIR).expanduser()
-    MITRE_DIR = Path(MITRE_DIR).expanduser()
-    DEMO_DIR = Path(DEMO_DIR).expanduser()
-    CACHE_DIR = Path(CACHE_DIR).expanduser()
     EVIDENCE_DIR = Path(EVIDENCE_DIR).expanduser()
     REPORTS_DIR = Path(REPORTS_DIR).expanduser()
 
-    for directory in (DATA_DIR, MITRE_DIR, DEMO_DIR, CACHE_DIR, EVIDENCE_DIR, REPORTS_DIR):
+    for directory in (EVIDENCE_DIR, REPORTS_DIR):
         directory.mkdir(parents=True, exist_ok=True)
 
     SUPPORTED_FORMATS = _normalize_supported_formats(SUPPORTED_FORMATS, [".raw", ".vmem", ".dmp", ".mem", ".lime", ".img"])

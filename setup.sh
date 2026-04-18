@@ -26,7 +26,7 @@ else
 fi
 
 echo "[3/3] Creating output directories..."
-mkdir -p reports/output evidence logs data/cached_responses data/demo_scenarios
+mkdir -p reports/output evidence logs
 
 echo ""
 echo "=== Setup Complete ==="

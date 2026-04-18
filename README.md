@@ -30,10 +30,6 @@ VolatileAI/
 ├── core/
 ├── ui/
 ├── reports/
-├── data/
-│   ├── cached_responses/
-│   ├── demo_scenarios/
-│   └── mitre/
 ├── evidence/
 └── logs/
 ```
@@ -173,10 +169,9 @@ python3 -m volatility3 -h | head
 2. Verify API key or local Ollama service.
 3. Check terminal and `logs/` for network/auth errors.
 
-4. No demo scenarios shown:
+4. Scenario mode:
 
-1. This is expected if `data/demo_scenarios/` is empty.
-2. Add `scenario_*.json` files only if you want scenario mode.
+1. Demo scenario loading is disabled in this build (real evidence workflow only).
 
 ## Security Notes
 
